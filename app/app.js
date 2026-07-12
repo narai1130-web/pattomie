@@ -9,7 +9,7 @@ const SHAPE_COLORS = [
   ['あか', '#E63946'], ['あお', '#457B9D'], ['きいろ', '#F4B41A'], ['みどり', '#52B69A'],
 ];
 const SHAPE_KINDS = [
-  ['まる', 'circle'], ['さんかく', 'triangle'], ['しかく', 'square'], ['ほし', 'star'],
+  ['まる', 'circle'], ['さんかく', 'triangle'], ['しかく', 'square'], ['ほし', 'star'], ['ハート', 'heart'],
 ];
 const SHAPE_ITEMS = [];
 for (const [cname, color] of SHAPE_COLORS) {
@@ -19,9 +19,9 @@ for (const [cname, color] of SHAPE_COLORS) {
 }
 
 const CATEGORIES = {
-  animals:  { label: 'どうぶつ', items: ['🐶','🐱','🐭','🐰','🦊','🐻','🐼','🐸','🐷','🐮','🦁','🐘','🦒','🐟','🐦','🐢'] },
-  foods:    { label: 'たべもの', items: ['🍎','🍌','🍇','🍓','🍉','🍊','🥕','🌽','🍞','🍙','🍜','🍕','🍰','🍩','🍦','🍪'] },
-  vehicles: { label: 'のりもの', items: ['🚗','🚌','🚒','🚑','🚓','🚜','🚲','🛴','🚂','✈️','🚁','🚀','⛵','🚢','🛵','🚚'] },
+  animals:  { label: 'どうぶつ', items: ['🐶','🐱','🐭','🐰','🦊','🐻','🐼','🐸','🐷','🐮','🦁','🐘','🦒','🐟','🐦','🐢','🐵','🐨','🐯','🦆'] },
+  foods:    { label: 'たべもの', items: ['🍎','🍌','🍇','🍓','🍉','🍊','🥕','🌽','🍞','🍙','🍜','🍕','🍰','🍩','🍦','🍪','🍅','🥐','🍑','🍬'] },
+  vehicles: { label: 'のりもの', items: ['🚗','🚌','🚒','🚑','🚓','🚜','🚲','🛴','🚂','✈️','🚁','🚀','⛵','🚢','🛵','🚚','🚕','🚛','🛶','🚠'] },
   shapes:   { label: 'かたち・いろ', items: SHAPE_ITEMS },
   mix:      { label: 'ミックス', items: [] }, // 実行時に他カテゴリから合成
 };
@@ -40,12 +40,13 @@ const ZUKAN_COST = 6; // 星6個ごとに1つ解放
 const LEVELS = [
   [2,2,10],[2,3,10],[2,3,5],[3,3,10],[3,3,5],[3,4,15],
   [3,4,10],[3,4,5],[4,4,15],[4,4,10],[4,4,5],[4,4,3],
+  [4,5,15],[4,5,10],[4,5,5],
 ];
 
 /* ---------- 保存 ---------- */
 const DEFAULT_SETTINGS = {
   grid: '2x3', time: 10, category: 'animals', reveal: 'seq',
-  seqLen: 3, auto: true, sound: true, bgm: true, voice: true,
+  seqLen: 3, seqInterval: 1, auto: true, sound: true, bgm: true, voice: true,
 };
 const DEFAULT_PROGRESS = { stars: 0, level: 0, winStreak: 0, loseStreak: 0 };
 
@@ -188,6 +189,7 @@ function shapeSVG(shape, color) {
     square: `<rect x="14" y="14" width="72" height="72" rx="10" fill="${color}"/>`,
     triangle: `<path d="M50 12 L92 84 L8 84 Z" fill="${color}"/>`,
     star: `<path d="M50 6 L61 38 L95 38 L67 58 L78 91 L50 71 L22 91 L33 58 L5 38 L39 38 Z" fill="${color}"/>`,
+    heart: `<path d="M50 86 C22 62 8 44 16 28 C24 13 44 16 50 30 C56 16 76 13 84 28 C92 44 78 62 50 86 Z" fill="${color}"/>`,
   };
   return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${paths[shape]}</svg>`;
 }
@@ -219,7 +221,7 @@ const Game = {
   cardEls: [],
   cardLoc: [],         // カードidごとの位置 {loc:'cell'|'tray', idx}
   cellRects: [], trayRects: [],
-  cardSize: 0,
+  csGrid: 0, csTray: 0, // グリッド側・トレイ側のカードサイズ(独立)
   timerTimeout: null,
 };
 
@@ -239,46 +241,54 @@ function computeLayout() {
   const n = Game.cols * Game.rows;
   const gap = 12, pad = 14;
 
-  // トレイの列数
-  const trayCols = n <= 6 ? 2 : 3;
-  const trayRows = Math.ceil(n / trayCols);
-
   const gridRegionW = W * 0.58 - pad * 2;
   const trayRegionW = W * 0.38 - pad * 2;
   const regionH = H - pad * 2;
 
-  const csGrid = Math.min(
+  // グリッド側のカードサイズはグリッド領域だけで決める(トレイに縛られない)
+  const csGrid = Math.floor(Math.min(
     (gridRegionW - gap * (Game.cols - 1)) / Game.cols,
     (regionH - gap * (Game.rows - 1)) / Game.rows,
-  );
-  const csTray = Math.min(
-    (trayRegionW - gap * (trayCols - 1)) / trayCols,
-    (regionH - gap * (trayRows - 1)) / trayRows,
-  );
-  const cs = Math.floor(Math.min(csGrid, csTray, 170));
-  Game.cardSize = cs;
+    170,
+  ));
+
+  // トレイ側は列数2〜4を試して、最もカードが大きくなる配置を選ぶ
+  let csTray = 0, trayCols = 2;
+  for (let c = 2; c <= 4; c++) {
+    const r = Math.ceil(n / c);
+    const s = Math.min(
+      (trayRegionW - gap * (c - 1)) / c,
+      (regionH - gap * (r - 1)) / r,
+    );
+    if (s > csTray) { csTray = s; trayCols = c; }
+  }
+  csTray = Math.floor(Math.min(csTray, csGrid));
+  const trayRows = Math.ceil(n / trayCols);
+
+  Game.csGrid = csGrid;
+  Game.csTray = csTray;
 
   // グリッドセル座標(グリッド領域の中央に配置)
-  const gridW = Game.cols * cs + (Game.cols - 1) * gap;
-  const gridH = Game.rows * cs + (Game.rows - 1) * gap;
+  const gridW = Game.cols * csGrid + (Game.cols - 1) * gap;
+  const gridH = Game.rows * csGrid + (Game.rows - 1) * gap;
   const gx0 = pad + (gridRegionW - gridW) / 2;
   const gy0 = (H - gridH) / 2;
   Game.cellRects = [];
   for (let r = 0; r < Game.rows; r++) {
     for (let c = 0; c < Game.cols; c++) {
-      Game.cellRects.push({ x: gx0 + c * (cs + gap), y: gy0 + r * (cs + gap), s: cs });
+      Game.cellRects.push({ x: gx0 + c * (csGrid + gap), y: gy0 + r * (csGrid + gap), s: csGrid });
     }
   }
 
   // トレイスロット座標(右側領域の中央)
-  const trayW = trayCols * cs + (trayCols - 1) * gap;
-  const trayH = trayRows * cs + (trayRows - 1) * gap;
+  const trayW = trayCols * csTray + (trayCols - 1) * gap;
+  const trayH = trayRows * csTray + (trayRows - 1) * gap;
   const tx0 = W * 0.60 + (trayRegionW - trayW) / 2;
   const ty0 = (H - trayH) / 2;
   Game.trayRects = [];
   for (let i = 0; i < n; i++) {
     const r = Math.floor(i / trayCols), c = i % trayCols;
-    Game.trayRects.push({ x: tx0 + c * (cs + gap), y: ty0 + r * (cs + gap), s: cs });
+    Game.trayRects.push({ x: tx0 + c * (csTray + gap), y: ty0 + r * (csTray + gap), s: csTray });
   }
 }
 
@@ -305,21 +315,26 @@ function makeCardEl(item, id) {
   const el = document.createElement('div');
   el.className = 'card';
   el.dataset.id = id;
-  el.style.width = Game.cardSize + 'px';
-  el.style.height = Game.cardSize + 'px';
+  el.style.width = Game.csGrid + 'px';
+  el.style.height = Game.csGrid + 'px';
   el.innerHTML = `
     <div class="card-inner">
-      <div class="card-face card-front">${faceHTML(item, Game.cardSize)}</div>
+      <div class="card-face card-front">${faceHTML(item, Game.csGrid)}</div>
       <div class="card-face card-back"></div>
     </div>`;
   attachDrag(el);
   return el;
 }
 
+// 位置と同時にサイズも移動先に合わせる(グリッドとトレイでカードサイズが違うため)
 function placeCardAt(el, rect, animate = true) {
   if (!animate) el.classList.add('no-anim');
   el.style.left = rect.x + 'px';
   el.style.top = rect.y + 'px';
+  el.style.width = rect.s + 'px';
+  el.style.height = rect.s + 'px';
+  const em = el.querySelector('.emoji');
+  if (em) em.style.fontSize = Math.round(rect.s * 0.62) + 'px';
   if (!animate) {
     void el.offsetWidth; // reflow
     el.classList.remove('no-anim');
@@ -463,18 +478,18 @@ function freeTraySlot() {
 
 function dropCard(el) {
   const id = Number(el.dataset.id);
-  const cs = Game.cardSize;
-  const cx = parseFloat(el.style.left) + cs / 2;
-  const cy = parseFloat(el.style.top) + cs / 2;
+  const s = parseFloat(el.style.width);
+  const cx = parseFloat(el.style.left) + s / 2;
+  const cy = parseFloat(el.style.top) + s / 2;
 
   // 一番近いセルを探す
   let best = -1, bestDist = Infinity;
   Game.cellRects.forEach((rc, i) => {
-    const d = Math.hypot(rc.x + cs / 2 - cx, rc.y + cs / 2 - cy);
+    const d = Math.hypot(rc.x + rc.s / 2 - cx, rc.y + rc.s / 2 - cy);
     if (d < bestDist) { bestDist = d; best = i; }
   });
 
-  if (best >= 0 && bestDist < cs * 0.7) {
+  if (best >= 0 && bestDist < Game.csGrid * 0.7) {
     // セルにスナップ。先客がいたらトレイへ戻す
     const occ = cellOccupant(best);
     if (occ >= 0 && occ !== id) {
@@ -593,8 +608,15 @@ async function startSequence() {
   $('#seq-message').textContent = 'でてくる じゅんばんを おぼえてね';
   speak('でてくる じゅんばんを おぼえてね');
 
+  // 11枚以上はスロット・カードとも2段に折り返す前提でサイズを決める
   const area = $('#seq-area').getBoundingClientRect();
-  const cs = Math.floor(Math.min(150, (area.width - 40 - 14 * n) / n, area.height * 0.3));
+  const slotRows = n <= 10 ? 1 : 2;
+  const perRow = Math.ceil(n / slotRows);
+  const cs = Math.floor(Math.min(
+    150,
+    (area.width - 40 - 14 * perRow) / perRow,
+    (area.height - 60) / (slotRows * 2 + 1.5), // スロット+回答カード+中央の提示スペース
+  ));
   Seq.cardSize = cs;
 
   // 回答スロット
@@ -625,7 +647,7 @@ async function startSequence() {
     d.innerHTML = `<div class="card-inner"><div class="card-face card-front">${faceHTML(Seq.items[i], cs * 1.3)}</div></div>`;
     stage.appendChild(d);
     SFX.pop();
-    await sleep(1000);
+    await sleep(settings.seqInterval * 1000);
   }
   stage.innerHTML = '';
   await sleep(300);
@@ -741,11 +763,12 @@ function renderZukan() {
    設定画面・ペアレンタルゲート
    ========================================================= */
 const SETTING_OPTS = {
-  grid:     { values: ['2x2','2x3','3x3','3x4','4x4'], labels: ['2×2','2×3','3×3','3×4','4×4'] },
+  grid:     { values: ['2x2','2x3','3x3','3x4','4x4','4x5'], labels: ['2×2','2×3','3×3','3×4','4×4','4×5'] },
   time:     { values: [3,5,10,15,30,0], labels: ['3びょう','5びょう','10びょう','15びょう','30びょう','むげん'] },
   category: { values: Object.keys(CATEGORIES), labels: Object.values(CATEGORIES).map(c => c.label) },
   reveal:   { values: ['seq','all'], labels: ['1まいずつ','いっせい'] },
-  seqLen:   { values: [3,4,5,6], labels: ['3まい','4まい','5まい','6まい'] },
+  seqLen:   { values: [3,4,5,6,8,10,15,20], labels: ['3まい','4まい','5まい','6まい','8まい','10まい','15まい','20まい'] },
+  seqInterval: { values: [1,2,3], labels: ['1びょう','2びょう','3びょう'] },
   auto:     { values: [true,false], labels: ['オン','オフ'] },
   sound:    { values: [true,false], labels: ['オン','オフ'] },
   bgm:      { values: [true,false], labels: ['オン','オフ'] },
@@ -864,8 +887,6 @@ function init() {
       computeLayout();
       renderBoards();
       Game.cardEls.forEach(el => {
-        el.style.width = Game.cardSize + 'px';
-        el.style.height = Game.cardSize + 'px';
         const p = Game.cardLoc[Number(el.dataset.id)];
         const rc = p.loc === 'cell' ? Game.cellRects[p.idx] : Game.trayRects[p.idx];
         placeCardAt(el, rc, false);

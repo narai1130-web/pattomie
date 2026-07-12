@@ -19,12 +19,12 @@
   <h1 class="app-title"><span class="title-cam">📸</span> ぱっとみえ!</h1>
   <div class="home-buttons">
     <button id="btn-play" class="home-btn play">
-      <span class="home-btn-icon">🃏</span>
-      <span class="home-btn-label">ぱっとみて あそぶ</span>
+      <span class="home-btn-icon">📸</span>
+      <span class="home-btn-label">しゅんかんきおく</span>
     </button>
     <button id="btn-sequence" class="home-btn sequence">
-      <span class="home-btn-icon">1️⃣2️⃣3️⃣</span>
-      <span class="home-btn-label">じゅんばん あそび</span>
+      <span class="home-btn-icon">🎬</span>
+      <span class="home-btn-label">おはなしきおく</span>
     </button>
     <button id="btn-zukan" class="home-btn zukan">
       <span class="home-btn-icon">📖</span>
@@ -84,42 +84,55 @@
     <h2>⚙️ せってい</h2>
   </div>
   <div class="settings-body">
-    <div class="setting-row" id="row-grid">
-      <div class="setting-label">🔲 わくのかず</div>
-      <div class="setting-options" data-setting="grid"></div>
+    <div class="settings-group">
+      <h3 class="group-title">🌈 きょうつう</h3>
+      <div class="setting-row">
+        <div class="setting-label">🖼️ えがら</div>
+        <div class="setting-options" data-setting="category"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">🔔 おと</div>
+        <div class="setting-options" data-setting="sound"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">🎵 BGM</div>
+        <div class="setting-options" data-setting="bgm"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">🗣️ おしゃべり(音声ガイド)</div>
+        <div class="setting-options" data-setting="voice"></div>
+      </div>
     </div>
-    <div class="setting-row" id="row-time">
-      <div class="setting-label">⏳ おぼえるじかん</div>
-      <div class="setting-options" data-setting="time"></div>
+    <div class="settings-group">
+      <h3 class="group-title">📸 しゅんかんきおく</h3>
+      <div class="setting-row" id="row-grid">
+        <div class="setting-label">🔲 わくのかず</div>
+        <div class="setting-options" data-setting="grid"></div>
+      </div>
+      <div class="setting-row" id="row-time">
+        <div class="setting-label">⏳ おぼえるじかん</div>
+        <div class="setting-options" data-setting="time"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">✨ カードのでかた</div>
+        <div class="setting-options" data-setting="reveal"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">🪄 おまかせモード(むずかしさを じどうで ちょうせい)</div>
+        <div class="setting-options" data-setting="auto"></div>
+        <p class="setting-note">「わくのかず」や「おぼえるじかん」をえらぶと、おまかせモードはオフになるよ。</p>
+      </div>
     </div>
-    <div class="setting-row">
-      <div class="setting-label">🖼️ えがら</div>
-      <div class="setting-options" data-setting="category"></div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">✨ カードのでかた</div>
-      <div class="setting-options" data-setting="reveal"></div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">1️⃣ じゅんばんあそびのカードのかず</div>
-      <div class="setting-options" data-setting="seqLen"></div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">🪄 おまかせモード(むずかしさを じどうで ちょうせい)</div>
-      <div class="setting-options" data-setting="auto"></div>
-      <p class="setting-note">「わくのかず」や「おぼえるじかん」をえらぶと、おまかせモードはオフになるよ。</p>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">🔔 おと</div>
-      <div class="setting-options" data-setting="sound"></div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">🎵 BGM</div>
-      <div class="setting-options" data-setting="bgm"></div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">🗣️ おしゃべり(音声ガイド)</div>
-      <div class="setting-options" data-setting="voice"></div>
+    <div class="settings-group">
+      <h3 class="group-title">🎬 おはなしきおく</h3>
+      <div class="setting-row">
+        <div class="setting-label">🃏 カードのかず</div>
+        <div class="setting-options" data-setting="seqLen"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">⏱️ カードがでるかんかく</div>
+        <div class="setting-options" data-setting="seqInterval"></div>
+      </div>
     </div>
     <div class="setting-row danger-row">
       <button id="btn-reset-data" class="danger-btn">データをぜんぶリセット</button>
