@@ -917,6 +917,7 @@ function renderSettings() {
    プロフィール(兄弟利用)
    ========================================================= */
 let newAvatar = AVATARS[0];
+let editingProfileId = null; // null=新規作成モード、id=そのプロフィールの編集モード
 
 function renderProfileChip() {
   const p = activeProfile();
@@ -942,6 +943,20 @@ function renderProfileList() {
       switchProfile(p.id);
       $('#profile-modal').classList.add('hidden');
     });
+    // なまえ・アイコンの変更
+    const edit = document.createElement('span');
+    edit.className = 'p-edit';
+    edit.textContent = '✏️';
+    edit.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editingProfileId = p.id;
+      $('#profile-name').value = p.name;
+      newAvatar = p.avatar;
+      renderAvatarPick();
+      $('#profile-create').textContent = 'ほぞんする';
+      $('#profile-new').classList.remove('hidden');
+    });
+    b.appendChild(edit);
     if (profiles.list.length > 1) {
       const del = document.createElement('span');
       del.className = 'p-del';
@@ -982,14 +997,27 @@ function renderAvatarPick() {
   });
 }
 
-function createProfile() {
-  const name = $('#profile-name').value.trim() || `プレイヤー${profiles.list.length + 1}`;
-  const p = { id: 'p' + Date.now(), name, avatar: newAvatar };
-  profiles.list.push(p);
-  saveProfiles();
-  switchProfile(p.id);
-  $('#profile-modal').classList.add('hidden');
-  speak(`${name}、よろしくね!`);
+function submitProfile() {
+  const name = $('#profile-name').value.trim();
+  if (editingProfileId) {
+    // 既存プロフィールの編集
+    const p = profiles.list.find(p => p.id === editingProfileId);
+    if (name) p.name = name;
+    p.avatar = newAvatar;
+    saveProfiles();
+    editingProfileId = null;
+    renderProfileChip();
+    renderProfileList();
+    $('#profile-new').classList.add('hidden');
+  } else {
+    // 新規作成
+    const p = { id: 'p' + Date.now(), name: name || `プレイヤー${profiles.list.length + 1}`, avatar: newAvatar };
+    profiles.list.push(p);
+    saveProfiles();
+    switchProfile(p.id);
+    $('#profile-modal').classList.add('hidden');
+    speak(`${p.name}、よろしくね!`);
+  }
 }
 
 /* =========================================================
@@ -1096,18 +1124,21 @@ function init() {
 
   // プロフィール
   $('#profile-chip').addEventListener('click', () => {
+    editingProfileId = null;
     renderProfileList();
     $('#profile-new').classList.add('hidden');
     $('#profile-modal').classList.remove('hidden');
   });
   $('#profile-close').addEventListener('click', () => $('#profile-modal').classList.add('hidden'));
   $('#profile-add').addEventListener('click', () => {
+    editingProfileId = null;
     $('#profile-name').value = '';
     newAvatar = AVATARS[0];
     renderAvatarPick();
+    $('#profile-create').textContent = 'つくる';
     $('#profile-new').classList.remove('hidden');
   });
-  $('#profile-create').addEventListener('click', createProfile);
+  $('#profile-create').addEventListener('click', submitProfile);
 
   // きろく・時間制限
   $('#btn-records').addEventListener('click', () => { renderRecords(); showScreen('screen-records'); });

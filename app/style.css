@@ -235,7 +235,8 @@ button { font-family: inherit; border: none; cursor: pointer; background: none; 
 }
 .profile-item.active { border-color: #FFB703; background: #fff4d6; }
 .p-avatar { font-size: 30px; }
-.p-del { margin-left: auto; color: #c9a3a3; font-size: 17px; padding: 4px 10px; }
+.p-edit { margin-left: auto; font-size: 17px; padding: 4px 8px; opacity: 0.7; }
+.p-del { color: #c9a3a3; font-size: 17px; padding: 4px 10px; }
 #profile-new { margin: 12px 0; }
 #profile-name {
   font-size: 18px; padding: 10px 14px; border-radius: 12px;
