@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ぱっとみえ!</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ぱっとみえ!">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ホーム画面 -->
+<section id="screen-home" class="screen active">
+  <h1 class="app-title"><span class="title-cam">📸</span> ぱっとみえ!</h1>
+  <div class="home-buttons">
+    <button id="btn-play" class="home-btn play">
+      <span class="home-btn-icon">🃏</span>
+      <span class="home-btn-label">ぱっとみて あそぶ</span>
+    </button>
+    <button id="btn-sequence" class="home-btn sequence">
+      <span class="home-btn-icon">1️⃣2️⃣3️⃣</span>
+      <span class="home-btn-label">じゅんばん あそび</span>
+    </button>
+    <button id="btn-zukan" class="home-btn zukan">
+      <span class="home-btn-icon">📖</span>
+      <span class="home-btn-label">ごほうび ずかん</span>
+    </button>
+  </div>
+  <div class="home-stars">⭐ <span id="home-star-count">0</span></div>
+  <button id="btn-settings" class="corner-btn" title="せってい">⚙️</button>
+</section>
+
+<!-- ゲーム画面(フォトリーディング) -->
+<section id="screen-game" class="screen">
+  <div class="game-topbar">
+    <button id="game-home-btn" class="hold-home-btn">🏠<span class="hold-ring"></span></button>
+    <div id="game-message" class="game-message"></div>
+    <div id="timer-wrap" class="timer-wrap hidden">
+      <div class="timer-track"><div id="timer-bar" class="timer-bar"></div></div>
+      <span class="timer-icon">⏳</span>
+    </div>
+    <button id="btn-memorized" class="big-action-btn hidden">おぼえた!</button>
+    <button id="btn-done" class="big-action-btn done hidden">できた!</button>
+  </div>
+  <div id="play-area" class="play-area">
+    <div id="grid-layer"></div>
+    <div id="tray-layer"></div>
+    <div id="card-layer"></div>
+  </div>
+</section>
+
+<!-- じゅんばん記憶画面 -->
+<section id="screen-sequence" class="screen">
+  <div class="game-topbar">
+    <button id="seq-home-btn" class="hold-home-btn">🏠<span class="hold-ring"></span></button>
+    <div id="seq-message" class="game-message"></div>
+  </div>
+  <div id="seq-area" class="play-area">
+    <div id="seq-slots" class="seq-slots"></div>
+    <div id="seq-stage" class="seq-stage"></div>
+    <div id="seq-choices" class="seq-choices"></div>
+  </div>
+</section>
+
+<!-- ごほうび図鑑 -->
+<section id="screen-zukan" class="screen">
+  <div class="sub-topbar">
+    <button class="back-btn" data-back>🏠 もどる</button>
+    <h2>📖 ごほうび ずかん</h2>
+    <div class="zukan-progress">⭐ <span id="zukan-star-count">0</span> <span id="zukan-next" class="zukan-next"></span></div>
+  </div>
+  <div id="zukan-grid" class="zukan-grid"></div>
+</section>
+
+<!-- 設定画面(親向け) -->
+<section id="screen-settings" class="screen">
+  <div class="sub-topbar">
+    <button class="back-btn" data-back>🏠 もどる</button>
+    <h2>⚙️ せってい(おうちのひと用)</h2>
+  </div>
+  <div class="settings-body">
+    <div class="setting-row" id="row-grid">
+      <div class="setting-label">🔲 わくのかず</div>
+      <div class="setting-options" data-setting="grid"></div>
+    </div>
+    <div class="setting-row" id="row-time">
+      <div class="setting-label">⏳ おぼえるじかん</div>
+      <div class="setting-options" data-setting="time"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">🖼️ えがら</div>
+      <div class="setting-options" data-setting="category"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">✨ カードのでかた</div>
+      <div class="setting-options" data-setting="reveal"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">1️⃣ じゅんばんあそびのカードのかず</div>
+      <div class="setting-options" data-setting="seqLen"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">🪄 おまかせモード(むずかしさを自動調整)</div>
+      <div class="setting-options" data-setting="auto"></div>
+      <p class="setting-note">オンのあいだは「わくのかず」「おぼえるじかん」は自動できまります。</p>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">🔔 おと</div>
+      <div class="setting-options" data-setting="sound"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">🎵 BGM</div>
+      <div class="setting-options" data-setting="bgm"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">🗣️ おしゃべり(音声ガイド)</div>
+      <div class="setting-options" data-setting="voice"></div>
+    </div>
+    <div class="setting-row danger-row">
+      <button id="btn-reset-data" class="danger-btn">データをぜんぶリセット</button>
+    </div>
+  </div>
+</section>
+
+<!-- ペアレンタルゲート -->
+<div id="gate-modal" class="modal hidden">
+  <div class="modal-panel gate-panel">
+    <p class="gate-title">おうちのひとに みせてね</p>
+    <p class="gate-instruction">下の数字を順番にタップ: <span id="gate-code" class="gate-code"></span></p>
+    <div id="gate-pad" class="gate-pad"></div>
+    <button id="gate-cancel" class="gate-cancel">やめる</button>
+  </div>
+</div>
+
+<!-- 結果オーバーレイ -->
+<div id="result-overlay" class="modal hidden">
+  <div class="modal-panel result-panel">
+    <div id="result-stars" class="result-stars"></div>
+    <p id="result-message" class="result-message"></p>
+    <div class="result-buttons">
+      <button id="btn-retry" class="result-btn retry">🔁 もういっかい</button>
+      <button id="btn-go-home" class="result-btn home">🏠 おうちへ</button>
+    </div>
+  </div>
+</div>
+
+<!-- 縦向き警告 -->
+<div id="rotate-overlay">
+  <div class="rotate-inner">
+    <div class="rotate-icon">📱↻</div>
+    <p>iPadを よこむきに してね</p>
+  </div>
+</div>
+
+<div id="confetti-layer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

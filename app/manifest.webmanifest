@@ -1,0 +1,14 @@
+{
+  "name": "ぱっとみえ!",
+  "short_name": "ぱっとみえ!",
+  "description": "3〜6歳向けフォトリーディング・トレーニングゲーム",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#FDF6E3",
+  "theme_color": "#FFB703",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
