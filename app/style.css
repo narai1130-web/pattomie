@@ -34,6 +34,13 @@ button { font-family: inherit; border: none; cursor: pointer; background: none; 
 .home-btn-icon { font-size: 64px; line-height: 1; }
 .home-btn-label { font-size: 20px; font-weight: bold; color: #4a3b2a; }
 .home-stars { font-size: 26px; color: #a07b2f; font-weight: bold; }
+.profile-chip {
+  position: absolute; top: 16px; left: 16px;
+  font-size: 20px; font-weight: bold; color: #5b4a36;
+  background: #fff; border-radius: 24px; padding: 10px 22px;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+}
+.profile-chip:active { transform: translateY(2px); }
 .settings-btn {
   font-size: 20px; font-weight: bold; color: #5b4a36;
   background: #fff; border-radius: 24px; padding: 12px 30px;
@@ -146,6 +153,15 @@ button { font-family: inherit; border: none; cursor: pointer; background: none; 
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; color: #cbb689; font-weight: bold; position: relative;
 }
+.seq-slot.filled { background: #fff; border-style: solid; border-color: #e8dcc0; }
+.seq-slot.correct { border-style: solid; border-color: #52B69A; background: #fff; box-shadow: 0 0 14px 3px rgba(82,182,154,0.5); }
+.seq-slot.wrong { animation: wiggle .5s ease; border-style: solid; border-color: #F4A261; background: #fff; }
+.slot-ghost {
+  position: absolute; right: -8px; bottom: -8px; z-index: 5;
+  background: #fff; border: 2px solid #F4A261; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  animation: ghostin .5s ease .15s backwards;
+}
 .seq-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .seq-choices { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 
@@ -196,6 +212,49 @@ button { font-family: inherit; border: none; cursor: pointer; background: none; 
 .opt-pill.selected { background: #FFB703; color: #4a3b2a; border-color: #e8a800; }
 .opt-pill:disabled { opacity: 0.4; }
 .danger-row { margin-top: 40px; }
+.records-btn {
+  font-size: 17px; font-weight: bold; color: #23485a;
+  background: #d9edf5; border-radius: 16px; padding: 12px 24px;
+}
+
+/* ---------- きろく ---------- */
+.records-body { flex: 1; overflow-y: auto; padding: 22px 30px 40px; }
+.records-summary { font-size: 18px; font-weight: bold; color: #5b4a36; margin-bottom: 18px; }
+.rec-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+.rec-date { width: 50px; font-size: 14px; color: #8a7a5f; font-weight: bold; text-align: right; flex: 0 0 auto; }
+.rec-bar-track { flex: 0 0 300px; height: 16px; background: #f1e8d4; border-radius: 8px; overflow: hidden; }
+.rec-bar { height: 100%; background: linear-gradient(90deg, #FFB703, #F4A261); border-radius: 8px; }
+.rec-info { font-size: 14px; color: #7a6a50; }
+
+/* ---------- プロフィール ---------- */
+.profile-panel { min-width: 440px; }
+.profile-item {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  background: #f7f1e3; border-radius: 16px; padding: 12px 18px; margin-bottom: 10px;
+  font-size: 20px; font-weight: bold; color: #5b4a36; border: 3px solid transparent;
+}
+.profile-item.active { border-color: #FFB703; background: #fff4d6; }
+.p-avatar { font-size: 30px; }
+.p-del { margin-left: auto; color: #c9a3a3; font-size: 17px; padding: 4px 10px; }
+#profile-new { margin: 12px 0; }
+#profile-name {
+  font-size: 18px; padding: 10px 14px; border-radius: 12px;
+  border: 2px solid #e5d9bd; width: 220px; margin-bottom: 12px;
+  font-family: inherit; text-align: center;
+}
+#avatar-pick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px; }
+#avatar-pick button { font-size: 28px; padding: 6px 8px; border-radius: 12px; background: #f1e8d4; border: 3px solid transparent; }
+#avatar-pick button.selected { border-color: #FFB703; background: #fff; }
+#profile-create {
+  font-size: 18px; font-weight: bold; color: #fff;
+  background: #2A9D8F; border-radius: 20px; padding: 10px 28px;
+}
+#profile-add {
+  font-size: 17px; font-weight: bold; color: #5b4a36;
+  background: #f1e8d4; border-radius: 20px; padding: 10px 22px; margin: 6px 0 4px;
+}
+.timeup-icon { font-size: 64px; margin-bottom: 10px; }
+#gate-modal { z-index: 260; }
 .danger-btn { font-size: 16px; color: #c0392b; background: #fdecea; border-radius: 12px; padding: 12px 20px; }
 
 /* ---------- モーダル ---------- */

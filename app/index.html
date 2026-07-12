@@ -16,6 +16,7 @@
 
 <!-- ホーム画面 -->
 <section id="screen-home" class="screen active">
+  <button id="profile-chip" class="profile-chip">🐻</button>
   <h1 class="app-title"><span class="title-cam">📸</span> ぱっとみえ!</h1>
   <div class="home-buttons">
     <button id="btn-play" class="home-btn play">
@@ -59,6 +60,7 @@
   <div class="game-topbar">
     <button id="seq-home-btn" class="home-icon-btn">🏠</button>
     <div id="seq-message" class="game-message"></div>
+    <button id="seq-done" class="big-action-btn done hidden">できた!</button>
   </div>
   <div id="seq-area" class="play-area">
     <div id="seq-slots" class="seq-slots"></div>
@@ -134,10 +136,29 @@
         <div class="setting-options" data-setting="seqInterval"></div>
       </div>
     </div>
+    <div class="settings-group">
+      <h3 class="group-title">📊 きろくと じかん</h3>
+      <div class="setting-row">
+        <div class="setting-label">⏰ 1にちに あそべるじかん</div>
+        <div class="setting-options" data-setting="timeLimit"></div>
+      </div>
+      <div class="setting-row">
+        <button id="btn-records" class="records-btn">📊 きろくをみる</button>
+      </div>
+    </div>
     <div class="setting-row danger-row">
-      <button id="btn-reset-data" class="danger-btn">データをぜんぶリセット</button>
+      <button id="btn-reset-data" class="danger-btn">いまのプレイヤーのデータをリセット</button>
     </div>
   </div>
+</section>
+
+<!-- きろく画面(親向け) -->
+<section id="screen-records" class="screen">
+  <div class="sub-topbar">
+    <button class="back-btn" data-back>🏠 もどる</button>
+    <h2>📊 きろく <span id="records-title-name"></span></h2>
+  </div>
+  <div id="records-body" class="records-body"></div>
 </section>
 
 <!-- ペアレンタルゲート -->
@@ -159,6 +180,30 @@
       <button id="btn-retry" class="result-btn retry">🔁 もういっかい</button>
       <button id="btn-go-home" class="result-btn home">🏠 おうちへ</button>
     </div>
+  </div>
+</div>
+
+<!-- プロフィール選択 -->
+<div id="profile-modal" class="modal hidden">
+  <div class="modal-panel profile-panel">
+    <p class="gate-title">だれが あそぶ?</p>
+    <div id="profile-list"></div>
+    <div id="profile-new" class="hidden">
+      <input id="profile-name" maxlength="8" placeholder="なまえ" autocomplete="off">
+      <div id="avatar-pick"></div>
+      <button id="profile-create">つくる</button>
+    </div>
+    <button id="profile-add">➕ あたらしい プレイヤー</button>
+    <button id="profile-close" class="gate-cancel">とじる</button>
+  </div>
+</div>
+
+<!-- 遊びすぎ防止 -->
+<div id="timeup-overlay" class="modal hidden">
+  <div class="modal-panel">
+    <div class="timeup-icon">🌙</div>
+    <p class="result-message">きょうは おしまい!<br>また あした あそぼうね</p>
+    <button id="timeup-home" class="result-btn home">🏠 おうちへ</button>
   </div>
 </div>
 

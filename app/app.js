@@ -40,25 +40,80 @@ const ZUKAN_COST = 6; // 星6個ごとに1つ解放
 const LEVELS = [
   [2,2,10],[2,3,10],[2,3,5],[3,3,10],[3,3,5],[3,4,15],
   [3,4,10],[3,4,5],[4,4,15],[4,4,10],[4,4,5],[4,4,3],
-  [4,5,15],[4,5,10],[4,5,5],
+  [5,4,15],[5,4,10],[5,4,5],
 ];
 
-/* ---------- 保存 ---------- */
+/* ---------- 保存(プロフィールごと) ---------- */
 const DEFAULT_SETTINGS = {
   grid: '2x3', time: 10, category: 'animals', reveal: 'seq',
   seqLen: 3, seqInterval: 1, auto: true, sound: true, bgm: true, voice: true,
+  timeLimit: 0, // 1日の上限(分)。0=なし
 };
 const DEFAULT_PROGRESS = { stars: 0, level: 0, winStreak: 0, loseStreak: 0 };
-
-let settings = load('pr_settings', DEFAULT_SETTINGS);
-let progress = load('pr_progress', DEFAULT_PROGRESS);
+const DEFAULT_RECORDS = { games: [], daily: {} }; // games: 1プレイ1件, daily: 日付→プレイ秒数
+const AVATARS = ['🐻','🐰','🐱','🐶','🦁','🐼','🦄','🐸'];
 
 function load(key, def) {
   try { return { ...def, ...JSON.parse(localStorage.getItem(key) || '{}') }; }
   catch { return { ...def }; }
 }
-function saveSettings() { localStorage.setItem('pr_settings', JSON.stringify(settings)); }
-function saveProgress() { localStorage.setItem('pr_progress', JSON.stringify(progress)); }
+
+let profiles = load('pr_profiles', { list: [], activeId: null });
+let settings, progress, records;
+
+// 初回またはv1.0からの移行: プロフィール1を作り、既存データを引き継ぐ
+if (!profiles.list.length) {
+  const p = { id: 'p' + Date.now(), name: 'プレイヤー1', avatar: '🐻' };
+  profiles = { list: [p], activeId: p.id };
+  for (const [oldKey, newKey] of [['pr_settings', 'pr_settings_' + p.id], ['pr_progress', 'pr_progress_' + p.id]]) {
+    const v = localStorage.getItem(oldKey);
+    if (v) { localStorage.setItem(newKey, v); localStorage.removeItem(oldKey); }
+  }
+  localStorage.setItem('pr_profiles', JSON.stringify(profiles));
+}
+
+function loadProfileData() {
+  settings = load('pr_settings_' + profiles.activeId, DEFAULT_SETTINGS);
+  if (settings.grid === '4x5') settings.grid = '5x4'; // 旧バージョンからの移行
+  progress = load('pr_progress_' + profiles.activeId, DEFAULT_PROGRESS);
+  records = load('pr_records_' + profiles.activeId, DEFAULT_RECORDS);
+}
+loadProfileData();
+
+function saveSettings() { localStorage.setItem('pr_settings_' + profiles.activeId, JSON.stringify(settings)); }
+function saveProgress() { localStorage.setItem('pr_progress_' + profiles.activeId, JSON.stringify(progress)); }
+function saveRecords() { localStorage.setItem('pr_records_' + profiles.activeId, JSON.stringify(records)); }
+function saveProfiles() { localStorage.setItem('pr_profiles', JSON.stringify(profiles)); }
+function activeProfile() { return profiles.list.find(p => p.id === profiles.activeId); }
+
+function dateKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function addGameRecord(mode, correct, total, label) {
+  records.games.push({ d: dateKey(), mode, correct, total, label });
+  if (records.games.length > 500) records.games = records.games.slice(-500);
+  saveRecords();
+}
+
+/* プレイ時間の計測と1日の上限 */
+function flushPlayTime() {
+  const now = Date.now();
+  let secs = 0;
+  if (Game.startedAt) { secs += (now - Game.startedAt) / 1000; Game.startedAt = null; }
+  if (Seq.startedAt) { secs += (now - Seq.startedAt) / 1000; Seq.startedAt = null; }
+  if (secs > 0) {
+    records.daily[dateKey()] = Math.round((records.daily[dateKey()] || 0) + secs);
+    saveRecords();
+  }
+}
+function isTimeUp() {
+  return settings.timeLimit > 0 && (records.daily[dateKey()] || 0) >= settings.timeLimit * 60;
+}
+function showTimeUp() {
+  $('#timeup-overlay').classList.remove('hidden');
+  speak('きょうはおしまい!またあしたあそぼうね');
+}
 
 /* ---------- サウンド ---------- */
 let audioCtx = null;
@@ -223,6 +278,7 @@ const Game = {
   cellRects: [], trayRects: [],
   csGrid: 0, csTray: 0, // グリッド側・トレイ側のカードサイズ(独立)
   timerTimeout: null,
+  startedAt: null,
 };
 
 function currentDifficulty() {
@@ -241,8 +297,10 @@ function computeLayout() {
   const n = Game.cols * Game.rows;
   const gap = 12, pad = 14;
 
-  const gridRegionW = W * 0.58 - pad * 2;
-  const trayRegionW = W * 0.38 - pad * 2;
+  // 20枚(5×4)のときはグリッド領域を広げてカードを大きくする
+  const gridShare = n >= 20 ? 0.66 : 0.62;
+  const gridRegionW = W * gridShare - pad * 2;
+  const trayRegionW = W * (0.96 - gridShare) - pad * 2;
   const regionH = H - pad * 2;
 
   // グリッド側のカードサイズはグリッド領域だけで決める(トレイに縛られない)
@@ -283,7 +341,7 @@ function computeLayout() {
   // トレイスロット座標(右側領域の中央)
   const trayW = trayCols * csTray + (trayCols - 1) * gap;
   const trayH = trayRows * csTray + (trayRows - 1) * gap;
-  const tx0 = W * 0.60 + (trayRegionW - trayW) / 2;
+  const tx0 = W * (gridShare + 0.02) + (trayRegionW - trayW) / 2;
   const ty0 = (H - trayH) / 2;
   Game.trayRects = [];
   for (let i = 0; i < n; i++) {
@@ -342,9 +400,11 @@ function placeCardAt(el, rect, animate = true) {
 }
 
 async function startGame() {
+  if (isTimeUp()) { showTimeUp(); return; }
   const d = currentDifficulty();
   Game.cols = d.cols; Game.rows = d.rows; Game.time = d.time;
   Game.state = 'present';
+  Game.startedAt = Date.now();
   showScreen('screen-game');
   $('#btn-memorized').classList.add('hidden');
   $('#btn-done').classList.add('hidden');
@@ -583,6 +643,8 @@ async function checkAnswers() {
 
   progress.stars += stars;
   saveProgress();
+  addGameRecord('photo', correctCount, n, `${Game.cols}×${Game.rows}`);
+  flushPlayTime();
 
   await sleep(500);
   if (perfect) { SFX.fanfare(); spawnConfetti(); speak('すごい!ぜんぶ せいかい!'); }
@@ -596,15 +658,21 @@ async function checkAnswers() {
    じゅんばん記憶 ゲーム
    ========================================================= */
 const Seq = {
-  state: 'idle', items: [], order: [], expect: 0, mistakes: 0, cardSize: 110,
+  state: 'idle', items: [], cardSize: 110,
+  answer: [],          // スロットに置かれたカードid(順)
+  slotEls: [], choiceEls: [],
+  startedAt: null,
 };
 
 async function startSequence() {
+  if (isTimeUp()) { showTimeUp(); return; }
   Seq.state = 'present';
+  Seq.startedAt = Date.now();
   showScreen('screen-sequence');
   const n = settings.seqLen;
   Seq.items = pickItems(settings.category, n);
-  Seq.expect = 0; Seq.mistakes = 0;
+  Seq.answer = []; Seq.slotEls = []; Seq.choiceEls = [];
+  $('#seq-done').classList.add('hidden');
   $('#seq-message').textContent = 'でてくる じゅんばんを おぼえてね';
   speak('でてくる じゅんばんを おぼえてね');
 
@@ -619,7 +687,7 @@ async function startSequence() {
   ));
   Seq.cardSize = cs;
 
-  // 回答スロット
+  // 回答スロット(置いたカードをタップすると下に戻せる)
   const slots = $('#seq-slots');
   slots.innerHTML = '';
   for (let i = 0; i < n; i++) {
@@ -628,6 +696,8 @@ async function startSequence() {
     d.dataset.idx = i;
     d.style.width = cs + 'px'; d.style.height = cs + 'px';
     d.textContent = i + 1;
+    d.addEventListener('pointerdown', () => removeSeqAnswer(i));
+    Seq.slotEls.push(d);
     slots.appendChild(d);
   }
   const stage = $('#seq-stage');
@@ -666,42 +736,87 @@ async function startSequence() {
     d.dataset.id = id;
     d.innerHTML = `<div class="card-inner"><div class="card-face card-front">${faceHTML(Seq.items[id], cs)}</div></div>`;
     d.addEventListener('pointerdown', () => tapSequenceCard(d, id));
+    Seq.choiceEls[id] = d;
     choices.appendChild(d);
   }
 }
 
-async function tapSequenceCard(el, id) {
-  if (Seq.state !== 'answer' || el.classList.contains('placed')) return;
-  if (id === Seq.expect) {
-    el.classList.add('placed', 'correct');
-    SFX.correct();
-    // スロットへ飛ばす(スロットに複製を置き、元を消す)
-    const slot = document.querySelector(`.seq-slot[data-idx="${Seq.expect}"]`);
-    slot.textContent = '';
-    const inner = document.createElement('div');
-    inner.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;';
-    inner.innerHTML = faceHTML(Seq.items[id], Seq.cardSize);
-    slot.appendChild(inner);
-    slot.classList.add('pop-in');
-    el.style.visibility = 'hidden';
-    Seq.expect++;
-    if (Seq.expect >= Seq.items.length) {
-      Seq.state = 'result';
-      const stars = Seq.mistakes === 0 ? 3 : Seq.mistakes <= 2 ? 2 : 1;
-      progress.stars += stars;
-      saveProgress();
-      await sleep(400);
-      if (Seq.mistakes === 0) { SFX.fanfare(); spawnConfetti(); speak('すごい!ぜんぶ せいかい!'); }
-      else speak('よくできました!');
-      showResult(stars, 'ぜんぶ ならべられたね!', startSequence);
+/* 下のカードをタップ → つぎの空きスロットに置く(正誤はまだ判定しない) */
+function tapSequenceCard(el, id) {
+  if (Seq.state !== 'answer' || Seq.answer.includes(id)) return;
+  if (Seq.answer.length >= Seq.items.length) return;
+  Seq.answer.push(id);
+  el.style.visibility = 'hidden';
+  SFX.snap();
+  renderSeqSlots();
+}
+
+/* スロットのカードをタップ → 下に戻す(あとのカードは前につめる) */
+function removeSeqAnswer(slotIdx) {
+  if (Seq.state !== 'answer' || slotIdx >= Seq.answer.length) return;
+  const [id] = Seq.answer.splice(slotIdx, 1);
+  Seq.choiceEls[id].style.visibility = 'visible';
+  SFX.back();
+  renderSeqSlots();
+}
+
+function renderSeqSlots() {
+  const n = Seq.items.length;
+  Seq.slotEls.forEach((slot, i) => {
+    if (i < Seq.answer.length) {
+      slot.classList.add('filled');
+      slot.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${faceHTML(Seq.items[Seq.answer[i]], Seq.cardSize)}</div>`;
+    } else {
+      slot.classList.remove('filled');
+      slot.textContent = i + 1;
     }
-  } else {
-    Seq.mistakes++;
-    el.classList.remove('wrong');
-    void el.offsetWidth;
-    el.classList.add('wrong');
-    SFX.wrongSoft();
+  });
+  $('#seq-done').classList.toggle('hidden', Seq.answer.length !== n);
+}
+
+/* 答え合わせ */
+async function checkSequence() {
+  if (Seq.state !== 'answer' || Seq.answer.length !== Seq.items.length) return;
+  Seq.state = 'check';
+  $('#seq-done').classList.add('hidden');
+  $('#seq-message').textContent = 'こたえあわせ!';
+
+  const n = Seq.items.length;
+  let correct = 0;
+  for (let i = 0; i < n; i++) {
+    if (Seq.state !== 'check') return; // 中断された
+    const slot = Seq.slotEls[i];
+    if (Seq.answer[i] === i) {
+      correct++;
+      slot.classList.add('correct');
+      SFX.correct();
+    } else {
+      slot.classList.add('wrong');
+      // 正しいカードをそっと見せる
+      const gs = Math.round(Seq.cardSize * 0.45);
+      const ghost = document.createElement('div');
+      ghost.className = 'slot-ghost';
+      ghost.style.width = gs + 'px'; ghost.style.height = gs + 'px';
+      ghost.innerHTML = faceHTML(Seq.items[i], gs);
+      slot.appendChild(ghost);
+      SFX.wrongSoft();
+    }
+    await sleep(450);
   }
+
+  Seq.state = 'result';
+  const perfect = correct === n;
+  const stars = perfect ? 3 : correct / n >= 0.6 ? 2 : 1;
+  progress.stars += stars;
+  saveProgress();
+  addGameRecord('seq', correct, n, `${n}まい`);
+  flushPlayTime();
+
+  await sleep(400);
+  if (perfect) { SFX.fanfare(); spawnConfetti(); speak('すごい!ぜんぶ せいかい!'); }
+  else if (correct / n >= 0.6) { speak('よくできました!'); }
+  else { speak('おしい!つぎも がんばろうね'); }
+  showResult(stars, `${n}まいちゅう ${correct}まい せいかい!`, startSequence);
 }
 
 /* =========================================================
@@ -763,7 +878,8 @@ function renderZukan() {
    設定画面・ペアレンタルゲート
    ========================================================= */
 const SETTING_OPTS = {
-  grid:     { values: ['2x2','2x3','3x3','3x4','4x4','4x5'], labels: ['2×2','2×3','3×3','3×4','4×4','4×5'] },
+  grid:     { values: ['2x2','2x3','3x3','3x4','4x4','5x4'], labels: ['2×2','2×3','3×3','3×4','4×4','5×4'] },
+  timeLimit: { values: [0,10,20,30], labels: ['なし','10ぷん','20ぷん','30ぷん'] },
   time:     { values: [3,5,10,15,30,0], labels: ['3びょう','5びょう','10びょう','15びょう','30びょう','むげん'] },
   category: { values: Object.keys(CATEGORIES), labels: Object.values(CATEGORIES).map(c => c.label) },
   reveal:   { values: ['seq','all'], labels: ['1まいずつ','いっせい'] },
@@ -795,6 +911,123 @@ function renderSettings() {
       box.appendChild(b);
     });
   });
+}
+
+/* =========================================================
+   プロフィール(兄弟利用)
+   ========================================================= */
+let newAvatar = AVATARS[0];
+
+function renderProfileChip() {
+  const p = activeProfile();
+  $('#profile-chip').textContent = `${p.avatar} ${p.name}`;
+}
+
+function switchProfile(id) {
+  profiles.activeId = id;
+  saveProfiles();
+  loadProfileData();
+  renderProfileChip();
+  $('#home-star-count').textContent = progress.stars;
+}
+
+function renderProfileList() {
+  const box = $('#profile-list');
+  box.innerHTML = '';
+  profiles.list.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'profile-item' + (p.id === profiles.activeId ? ' active' : '');
+    b.innerHTML = `<span class="p-avatar">${p.avatar}</span><span class="p-name">${p.name}</span>`;
+    b.addEventListener('click', () => {
+      switchProfile(p.id);
+      $('#profile-modal').classList.add('hidden');
+    });
+    if (profiles.list.length > 1) {
+      const del = document.createElement('span');
+      del.className = 'p-del';
+      del.textContent = '✕';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openGate(() => {
+          if (confirm(`「${p.name}」のデータをぜんぶけします。よろしいですか?`)) deleteProfile(p.id);
+        });
+      });
+      b.appendChild(del);
+    }
+    box.appendChild(b);
+  });
+  $('#profile-add').classList.toggle('hidden', profiles.list.length >= 4);
+}
+
+function deleteProfile(id) {
+  ['pr_settings_', 'pr_progress_', 'pr_records_'].forEach(k => localStorage.removeItem(k + id));
+  profiles.list = profiles.list.filter(p => p.id !== id);
+  if (profiles.activeId === id) profiles.activeId = profiles.list[0].id;
+  saveProfiles();
+  loadProfileData();
+  renderProfileChip();
+  $('#home-star-count').textContent = progress.stars;
+  renderProfileList();
+}
+
+function renderAvatarPick() {
+  const box = $('#avatar-pick');
+  box.innerHTML = '';
+  AVATARS.forEach(a => {
+    const b = document.createElement('button');
+    b.textContent = a;
+    b.className = a === newAvatar ? 'selected' : '';
+    b.addEventListener('click', () => { newAvatar = a; renderAvatarPick(); });
+    box.appendChild(b);
+  });
+}
+
+function createProfile() {
+  const name = $('#profile-name').value.trim() || `プレイヤー${profiles.list.length + 1}`;
+  const p = { id: 'p' + Date.now(), name, avatar: newAvatar };
+  profiles.list.push(p);
+  saveProfiles();
+  switchProfile(p.id);
+  $('#profile-modal').classList.add('hidden');
+  speak(`${name}、よろしくね!`);
+}
+
+/* =========================================================
+   きろく(親向け・プロフィールごと)
+   ========================================================= */
+function renderRecords() {
+  const p = activeProfile();
+  $('#records-title-name').textContent = `${p.avatar} ${p.name}`;
+
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dateKey(d);
+    const games = records.games.filter(g => g.d === key);
+    days.push({
+      label: `${d.getMonth() + 1}/${d.getDate()}`,
+      plays: games.length,
+      acc: games.length ? Math.round(games.reduce((s, g) => s + g.correct / g.total, 0) / games.length * 100) : null,
+      mins: Math.round((records.daily[key] || 0) / 60),
+    });
+  }
+  const maxPlays = Math.max(1, ...days.map(d => d.plays));
+  const totalGames = records.games.length;
+  const photoGames = records.games.filter(g => g.mode === 'photo').length;
+
+  $('#records-body').innerHTML = `
+    <div class="records-summary">
+      ⭐ ${progress.stars} / ぜんぶで ${totalGames}かい(しゅんかんきおく ${photoGames}かい・おはなしきおく ${totalGames - photoGames}かい)
+    </div>
+    <div class="records-chart">
+      ${days.map(d => `
+        <div class="rec-row">
+          <span class="rec-date">${d.label}</span>
+          <div class="rec-bar-track"><div class="rec-bar" style="width:${d.plays / maxPlays * 100}%"></div></div>
+          <span class="rec-info">${d.plays ? `${d.plays}かい / せいかいりつ${d.acc}% / ${d.mins}ふん` : '−'}</span>
+        </div>`).join('')}
+    </div>`;
 }
 
 /* ペアレンタルゲート */
@@ -830,10 +1063,12 @@ function openGate(onSuccess) {
    イベント配線・初期化
    ========================================================= */
 function goHome() {
+  flushPlayTime();
   Game.state = 'idle';
   Seq.state = 'idle';
   clearTimeout(Game.timerTimeout);
   $('#result-overlay').classList.add('hidden');
+  $('#seq-done').classList.add('hidden');
   showScreen('screen-home');
 }
 
@@ -857,6 +1092,29 @@ function init() {
 
   $('#btn-memorized').addEventListener('click', endMemorize);
   $('#btn-done').addEventListener('click', checkAnswers);
+  $('#seq-done').addEventListener('click', checkSequence);
+
+  // プロフィール
+  $('#profile-chip').addEventListener('click', () => {
+    renderProfileList();
+    $('#profile-new').classList.add('hidden');
+    $('#profile-modal').classList.remove('hidden');
+  });
+  $('#profile-close').addEventListener('click', () => $('#profile-modal').classList.add('hidden'));
+  $('#profile-add').addEventListener('click', () => {
+    $('#profile-name').value = '';
+    newAvatar = AVATARS[0];
+    renderAvatarPick();
+    $('#profile-new').classList.remove('hidden');
+  });
+  $('#profile-create').addEventListener('click', createProfile);
+
+  // きろく・時間制限
+  $('#btn-records').addEventListener('click', () => { renderRecords(); showScreen('screen-records'); });
+  $('#timeup-home').addEventListener('click', () => {
+    $('#timeup-overlay').classList.add('hidden');
+    goHome();
+  });
 
   $('#game-home-btn').addEventListener('click', goHome);
   $('#seq-home-btn').addEventListener('click', goHome);
@@ -867,14 +1125,12 @@ function init() {
   });
   $('#btn-go-home').addEventListener('click', goHome);
 
-  // リセットだけは誤操作防止のためペアレンタルゲートを通す
+  // リセットだけは誤操作防止のためペアレンタルゲートを通す(いまのプロフィールのみ)
   $('#btn-reset-data').addEventListener('click', () => {
     openGate(() => {
-      if (confirm('スターとせっていをぜんぶリセットします。よろしいですか?')) {
-        localStorage.removeItem('pr_settings');
-        localStorage.removeItem('pr_progress');
-        settings = { ...DEFAULT_SETTINGS };
-        progress = { ...DEFAULT_PROGRESS };
+      if (confirm(`「${activeProfile().name}」のスター・きろく・せっていをリセットします。よろしいですか?`)) {
+        ['pr_settings_', 'pr_progress_', 'pr_records_'].forEach(k => localStorage.removeItem(k + profiles.activeId));
+        loadProfileData();
         renderSettings();
         goHome();
       }
@@ -895,6 +1151,7 @@ function init() {
   });
 
   $('#home-star-count').textContent = progress.stars;
+  renderProfileChip();
 
   // Service Worker(オフライン対応)
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
