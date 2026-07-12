@@ -278,6 +278,10 @@ button { font-family: inherit; border: none; cursor: pointer; background: none; 
 .gate-pad button:active { background: #FFB703; }
 .gate-cancel { font-size: 16px; color: #999; padding: 8px 16px; }
 
+/* 結果ポップアップは後ろの回答が見えるように半透明にする */
+#result-overlay { background: rgba(60,45,25,0.12); }
+#result-overlay .modal-panel { background: rgba(255,255,255,0.75); }
+
 .result-panel { min-width: 420px; }
 .result-stars { font-size: 66px; margin-bottom: 6px; letter-spacing: 6px; }
 .result-stars .star { display: inline-block; animation: starpop .4s ease backwards; }
