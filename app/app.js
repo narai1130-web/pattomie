@@ -761,9 +761,10 @@ function renderSettings() {
       const b = document.createElement('button');
       b.className = 'opt-pill' + (settings[key] === v ? ' selected' : '');
       b.textContent = opt.labels[i];
-      if (settings.auto && (key === 'grid' || key === 'time')) b.disabled = true;
       b.addEventListener('click', () => {
         settings[key] = v;
+        // わくのかず・じかんを手動で選んだら、おまかせモードは自動でオフにする
+        if (key === 'grid' || key === 'time') settings.auto = false;
         saveSettings();
         if (key === 'bgm') { v ? (ensureAudio(), startBGM()) : stopBGM(); }
         renderSettings();
@@ -813,18 +814,6 @@ function goHome() {
   showScreen('screen-home');
 }
 
-function setupHoldHome(btn) {
-  let t = null;
-  btn.addEventListener('pointerdown', () => {
-    btn.classList.add('holding');
-    t = setTimeout(() => { btn.classList.remove('holding'); goHome(); }, 650);
-  });
-  const cancel = () => { btn.classList.remove('holding'); clearTimeout(t); };
-  btn.addEventListener('pointerup', cancel);
-  btn.addEventListener('pointerleave', cancel);
-  btn.addEventListener('pointercancel', cancel);
-}
-
 function init() {
   // 最初のタッチでオーディオを有効化(iOS Safariの自動再生制限対応)
   document.addEventListener('pointerdown', () => {
@@ -836,7 +825,8 @@ function init() {
   $('#btn-sequence').addEventListener('click', startSequence);
   $('#btn-zukan').addEventListener('click', () => { renderZukan(); showScreen('screen-zukan'); });
   $('#btn-settings').addEventListener('click', () => {
-    openGate(() => { renderSettings(); showScreen('screen-settings'); });
+    renderSettings();
+    showScreen('screen-settings');
   });
   $('#gate-cancel').addEventListener('click', () => $('#gate-modal').classList.add('hidden'));
 
@@ -845,8 +835,8 @@ function init() {
   $('#btn-memorized').addEventListener('click', endMemorize);
   $('#btn-done').addEventListener('click', checkAnswers);
 
-  setupHoldHome($('#game-home-btn'));
-  setupHoldHome($('#seq-home-btn'));
+  $('#game-home-btn').addEventListener('click', goHome);
+  $('#seq-home-btn').addEventListener('click', goHome);
 
   $('#btn-retry').addEventListener('click', () => {
     $('#result-overlay').classList.add('hidden');
@@ -854,15 +844,18 @@ function init() {
   });
   $('#btn-go-home').addEventListener('click', goHome);
 
+  // リセットだけは誤操作防止のためペアレンタルゲートを通す
   $('#btn-reset-data').addEventListener('click', () => {
-    if (confirm('スターとせっていをぜんぶリセットします。よろしいですか?')) {
-      localStorage.removeItem('pr_settings');
-      localStorage.removeItem('pr_progress');
-      settings = { ...DEFAULT_SETTINGS };
-      progress = { ...DEFAULT_PROGRESS };
-      renderSettings();
-      goHome();
-    }
+    openGate(() => {
+      if (confirm('スターとせっていをぜんぶリセットします。よろしいですか?')) {
+        localStorage.removeItem('pr_settings');
+        localStorage.removeItem('pr_progress');
+        settings = { ...DEFAULT_SETTINGS };
+        progress = { ...DEFAULT_PROGRESS };
+        renderSettings();
+        goHome();
+      }
+    });
   });
 
   // リサイズ時はゲーム中ならレイアウトを組み直す
